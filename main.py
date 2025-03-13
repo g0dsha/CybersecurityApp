@@ -17,17 +17,45 @@ def main():
         analysis_id = vt.upload_file(file_path, password)
         print(f"Файл отправлен на анализ. ID анализа: {analysis_id}")
         print("Ожидание завершения анализа...")
-        time.sleep(600)
+        time.sleep(10)
 
         # Получаем отчет по ID анализа
         report = vt.get_report(analysis_id)
         results = report["data"]["attributes"]["results"]
         file_id = report["meta"]["file_info"]["sha256"]
-        print(f"ID файла: {file_id}")
+
+        target_av = {
+            "Fortinet",
+            "McAfee Scanner",
+            "Yandex",
+            "Sophos",
+        }  # Антивирусы для сравнения
+        detected_av = set()  # Сработавшие антивирусы
+        detected_target_av = set()  # Сработавшие антивирусы из списка
+
+        print(f"ID файла: {file_id}\n")
         print("Антивирус и угроза:")
         for engine in results.values():
             if engine["result"] is not None:
-                print(f"- {engine['engine_name']}: {engine['result']}")
+                av_name = engine["engine_name"]
+                detected_av.add(av_name)
+                if av_name in target_av:
+                    detected_target_av.add(av_name)
+                print(f"- {av_name}: {engine['result']}")
+
+        # Вывод списка сработавших антивирусов
+        print("\nСписок антивирусов, которые обнаружили угрозу:")
+        print(", ".join(sorted(detected_av)))
+
+        # Проверка антивирусов из списка
+        print("\nПроверка указанных антивирусов:")
+        for av in target_av:
+            status = (
+                "✅ Обнаружил угрозу"
+                if av in detected_target_av
+                else "❌ Не обнаружил угрозу"
+            )
+            print(f"- {av}: {status}")
 
         # Получаем данные о поведении по ID файла
         behaviours = vt.get_behaviours(file_id)
@@ -91,7 +119,7 @@ def main():
     ]
 
     try:
-        print("\n Анализа уязвимостей ПО с использованием базы данных Vulners")
+        print("\nАнализа уязвимостей ПО с использованием базы данных Vulners")
         # Анализируем ПО
         results = vulners.analyze_software(software_list)
         # Генерируем отчет
