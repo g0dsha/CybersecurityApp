@@ -29,18 +29,18 @@ class VirusTotal:
         files["file"].close()
 
         if response.status_code == 200:
-            file_id = response.json()["data"]["id"]
-            return file_id
+            analysis_id = response.json()["data"]["id"]
+            return analysis_id
         else:
             raise Exception(
                 f"VirusTotal API error: {response.status_code}, {response.text}"
             )
 
-    def get_report(self, file_id):
+    def get_report(self, analysis_id):
         """
-        Получить отчет о сканировании файла по ID файла
+        Получить отчет о сканировании файла по ID анализа
         """
-        url = f"{self.api_url}/analyses/{file_id}"
+        url = f"{self.api_url}/analyses/{analysis_id}"
         headers = {
             "accept": "application/json",
             "x-apikey": self.api_key,
@@ -54,7 +54,7 @@ class VirusTotal:
                 f"VirusTotal API error: {response.status_code}, {response.text}"
             )
 
-    def get_behaviours(self, file_id, limit=10):
+    def get_behaviours(self, file_id):
         """
         Получить данные о поведении файла
         """
@@ -63,13 +63,10 @@ class VirusTotal:
             "accept": "application/json",
             "x-apikey": self.api_key,
         }
-        params = {
-            "limit": limit,
-        }
 
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers)
         if response.status_code == 200:
-            return response.json()  # Возвращаем JSON-ответ
+            return response.json()
         elif response.status_code == 404:
             return None
         else:

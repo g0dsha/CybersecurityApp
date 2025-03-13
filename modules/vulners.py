@@ -51,6 +51,7 @@ class Vulners:
 
             try:
                 vulnerabilities = self.search_vulnerabilities(program, version)
+                print(vulnerabilities)
                 if vulnerabilities:
                     results[f"{program} {version}"] = vulnerabilities
                     print(f"Найдено уязвимостей: {len(vulnerabilities)}")

@@ -1,7 +1,7 @@
 import time
 import json
-from modules.virustotal import VirusTotal
 from modules.vulners import Vulners
+from modules.virustotal import VirusTotal
 
 
 def main():
@@ -14,25 +14,63 @@ def main():
 
     try:
         # Отправляем файл на анализ
-        file_id = vt.upload_file(file_path, password)
-        print(f"Файл отправлен на анализ. ID файла: {file_id}")
+        analysis_id = vt.upload_file(file_path, password)
+        print(f"Файл отправлен на анализ. ID анализа: {analysis_id}")
         print("Ожидание завершения анализа...")
         time.sleep(600)
-        # Получаем отчет по ID файла
-        report = vt.get_report(file_id)
+
+        # Получаем отчет по ID анализа
+        report = vt.get_report(analysis_id)
         results = report["data"]["attributes"]["results"]
+        file_id = report["meta"]["file_info"]["sha256"]
+        print(f"ID файла: {file_id}")
         print("Антивирус и угроза:")
         for engine in results.values():
             if engine["result"] is not None:
                 print(f"- {engine['engine_name']}: {engine['result']}")
+
         # Получаем данные о поведении по ID файла
-        limit = 10
-        behaviours = vt.get_behaviours(file_id, limit)
+        behaviours = vt.get_behaviours(file_id)
         if behaviours:
             print(f"Данные о поведении файла {file_id}:")
-            print(behaviours)
+
+            hostnames = set()
+            resolved_ips = set()
+            attack_techniques = []
+
+            for entry in behaviours.get("data", []):
+                attributes = entry.get("attributes", {})
+            # Извлекаем hostname и resolved_ips
+            dns_lookups = attributes.get("dns_lookups", [])
+            for lookup in dns_lookups:
+                if "hostname" in lookup:
+                    hostnames.add(lookup["hostname"])
+                if "resolved_ips" in lookup:
+                    resolved_ips.update(lookup["resolved_ips"])
+
+            # Извлекаем mitre_attack_techniques
+            mitre_techniques = attributes.get("mitre_attack_techniques", [])
+            for technique in mitre_techniques:
+                attack_techniques.append(
+                    {
+                        "id": technique.get("id"),
+                        "signature_description": technique.get("signature_description"),
+                    }
+                )
+
+            print("Hostnames:")
+            for hostname in hostnames:
+                print(f"  - {hostname}")
+
+            print("Resolved IPs:")
+            for ip in resolved_ips:
+                print(f"  - {ip}")
+
+            print("MITRE Attack Techniques:")
+            for technique in attack_techniques:
+                print(f"   {technique['id']}: {technique['signature_description']}")
         else:
-            print(f"Данные о поведении для файла {file_id} отсутствуют.")
+            print(f"Нет данных о поведении файла {file_id}")
 
     except Exception as e:
         print(f"Ошибка: {e}")
@@ -53,6 +91,7 @@ def main():
     ]
 
     try:
+        print("\n Анализа уязвимостей ПО с использованием базы данных Vulners")
         # Анализируем ПО
         results = vulners.analyze_software(software_list)
         # Генерируем отчет
